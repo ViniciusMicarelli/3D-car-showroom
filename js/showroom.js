@@ -395,13 +395,19 @@ class Showroom {
 
   boot() {
 
-    this.cars.forEach((c, i) => {
+    this.cars.forEach((c) => {
       this.stand.add(c);
-      c.visible = (i === 0);
+      c.visible = true;
     });
 
     this.applyEnvironment(0, true);
     this.applyPaint(0, 0, true);
+    this.renderer.compile(this.scene, this.camera);
+    
+    this.cars.forEach((c, i) => {
+      c.visible = (i === 0);
+    });
+
     this.populateIntroStats();
     this.populateUI();
     this.startRender();
@@ -935,13 +941,22 @@ class Showroom {
 
     ScrollTrigger.create({
       trigger: document.body,
-      start: 0, end: '+=2000',
+      start: 0, end: 'bottom bottom',
       scrub: true,
       onUpdate: (self) => {
         document.querySelector('.scroll-fill').style.transform =
           `scaleX(${self.progress})`;
       }
     });
+
+    const lenis = new Lenis({
+      autoRaf: true,
+    });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add((time) => {
+      lenis.raf(time * 1000);
+    });
+    gsap.ticker.lagSmoothing(0);
   }
 
   onResize() {

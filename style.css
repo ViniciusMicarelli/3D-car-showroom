@@ -18,9 +18,8 @@
 
 html,
 body {
-  height: 100%;
+  height: 400vh;
   width: 100%;
-  overflow: hidden;
   background: #050507;
   color: var(--fg);
   font-family: var(--sans);
