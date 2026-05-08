@@ -16,6 +16,7 @@ export const CARS = [
       { label: 'Weight',   value: '1570', unit: 'kg' }
     ],
     accent: '#ff2d2d',
+    audio: 'public/audios/sf90.mp4',
     framing: { camera: [4.8, 1.4, 5.4], target: [0, 0.55, 0], scale: 1.0 }
   },
   {
@@ -35,6 +36,7 @@ export const CARS = [
       { label: 'Weight',   value: '1655', unit: 'kg' }
     ],
     accent: '#ff4b1f',
+    audio: 'public/audios/rs3.mp4',
     framing: { camera: [4.6, 1.4, 5.2], target: [0, 0.55, 0], scale: 1.0 }
   },
   {
@@ -54,6 +56,7 @@ export const CARS = [
       { label: 'Weight',   value: '1255', unit: 'kg' }
     ],
     accent: '#cc0000',
+    audio: 'public/audios/laferrari.mp4',
     framing: { camera: [5.0, 1.4, 5.6], target: [0, 0.5, 0], scale: 1.0 }
   },
   {
@@ -73,6 +76,7 @@ export const CARS = [
       { label: 'Weight',   value: '1575', unit: 'kg' }
     ],
     accent: '#c8ff00',
+    audio: 'public/audios/aventador.mp4',
     framing: { camera: [5.0, 1.45, 5.6], target: [0, 0.55, 0], scale: 1.0 }
   },
   {
@@ -92,6 +96,7 @@ export const CARS = [
       { label: 'Weight',   value: '1772', unit: 'kg' }
     ],
     accent: '#8a2be2',
+    audio: 'public/audios/revuelto.mp4',
     framing: { camera: [5.0, 1.45, 5.6], target: [0, 0.55, 0], scale: 1.0 }
   },
   {
@@ -111,6 +116,7 @@ export const CARS = [
       { label: 'Weight',   value: '1740', unit: 'kg' }
     ],
     accent: '#ffb302',
+    audio: 'public/audios/r35.mp4',
     framing: { camera: [5.2, 1.45, 5.6], target: [0, 0.6, 0], scale: 1.0 }
   },
 ];
