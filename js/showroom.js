@@ -54,13 +54,22 @@ class Showroom {
     this.currentPaint = 0;
     this.transitioning = false;
     this.autorotate = true;
-    this.exploreMode = false; 
+    this.exploreMode = false;
+    this.inDevSection = false;
+    this.doorsOpen = false;
+    this.audios = [];
+    this.currentAudio = null;
+    this._audioReady = false;
+    this._muted = false;
+    this._isMobile = window.innerWidth <= 768;
 
     this.initScene();
     this.initLights();
     this.initGround();
+    this.populateIntroStats();
     this.initIntroLogo();
     this.initLoader();
+    this.initAudio();
     this.loadAllModels().then(() => this.boot());
     window.addEventListener('resize', () => this.onResize());
   }
@@ -162,11 +171,76 @@ class Showroom {
     gsap.set('#intro .intro-meta', { autoAlpha: 0, y: 8 });
   }
 
+  initAudio() {
+    CARS.forEach((car, i) => {
+      if (!car.audio) return;
+      const audio = new Audio(car.audio);
+      audio.loop = true;
+      audio.volume = 0;
+      audio.preload = 'auto';
+      this.audios[i] = audio;
+    });
+
+    const onFirstInteraction = () => {
+      if (this._audioReady) return;
+      this._audioReady = true;
+      this.playAudioFor(this.currentIndex);
+      window.removeEventListener('click', onFirstInteraction);
+      window.removeEventListener('touchstart', onFirstInteraction);
+      window.removeEventListener('keydown', onFirstInteraction);
+      window.removeEventListener('wheel', onFirstInteraction);
+    };
+    window.addEventListener('click', onFirstInteraction, { once: true });
+    window.addEventListener('touchstart', onFirstInteraction, { once: true });
+    window.addEventListener('keydown', onFirstInteraction, { once: true });
+    window.addEventListener('wheel', onFirstInteraction, { once: true });
+  }
+
+  playAudioFor(index) {
+    if (!this._audioReady) return;
+    const newAudio = this.audios[index];
+    if (!newAudio) return;
+    if (newAudio === this.currentAudio) return;
+
+    if (this.currentAudio) {
+      const old = this.currentAudio;
+      gsap.to(old, {
+        volume: 0, duration: 0.8, ease: 'power2.inOut',
+        onComplete: () => { old.pause(); old.currentTime = 0; }
+      });
+    }
+
+    newAudio.currentTime = 0;
+    newAudio.play().catch(() => {});
+    if (!this._muted) {
+      gsap.to(newAudio, { volume: 0.12, duration: 1.2, ease: 'power2.out' });
+    }
+    this.currentAudio = newAudio;
+  }
+
+  toggleMute() {
+    this._muted = !this._muted;
+    const btn = document.getElementById('btn-mute');
+    btn.classList.toggle('muted', this._muted);
+    btn.querySelector('.label').textContent = this._muted ? 'Muted' : 'Sound';
+
+    if (this.currentAudio) {
+      if (this._muted) {
+        gsap.to(this.currentAudio, { volume: 0, duration: 0.35, ease: 'power2.inOut' });
+      } else {
+        this.currentAudio.play().catch(() => {});
+        gsap.to(this.currentAudio, { volume: 0.12, duration: 0.35, ease: 'power2.out' });
+      }
+    }
+  }
+
 
 
 
   async loadAllModels() {
     const loader = new GLTFLoader();
+    let loadedCount = 0;
+
     const promises = CARS.map((car, i) => new Promise((resolve) => {
       loader.load(
         car.file,
@@ -182,7 +256,9 @@ class Showroom {
           });
           this.cars[i] = root;
           this.bodyMaterials[i] = this.detectBodyMaterials(root);
-          this.updateLoader(i + 1, CARS.length, car.model);
+          
+          loadedCount++;
+          this.updateLoader(loadedCount, CARS.length, car.model);
           resolve({ ok: true });
         },
         undefined,
@@ -191,7 +267,9 @@ class Showroom {
           this.cars[i] = this.buildPlaceholderCar(car);
           this.bodyMaterials[i] = this.detectBodyMaterials(this.cars[i]);
           this.cars[i].userData.placeholder = true;
-          this.updateLoader(i + 1, CARS.length, car.model + ' (failed)');
+
+          loadedCount++;
+          this.updateLoader(loadedCount, CARS.length, car.model + ' (failed)');
           resolve({ ok: false });
         }
       );
@@ -324,6 +402,7 @@ class Showroom {
     );
 
     gsap.fromTo('.ld-wordmark', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out', delay: 0.1 });
+    gsap.fromTo('.ld-headphone-hint', { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.8, delay: 0.7, ease: 'power2.out' });
 
     this._scrambleField('lt-gpu', 'WebGL 2.0 · HARDWARE');
     this._scrambleField('lt-shader', 'PBR · PCFSOFT · ACESFilmic');
@@ -356,30 +435,36 @@ class Showroom {
   updateLoader(done, total, label) {
     const pct = done / total;
     
-
     const targetMPH = Math.round(pct * 217);
     const speedEl = document.getElementById('ld-speed-val');
+    
     if (speedEl) {
-      const obj = { v: parseInt(speedEl.textContent) || 0 };
-      gsap.to(obj, {
+      if (!this._speedData) {
+        this._speedData = { v: 0 };
+      }
+      
+      gsap.to(this._speedData, {
         v: targetMPH,
-        duration: 0.3,
+        duration: 0.5,
         ease: 'power2.out',
-        onUpdate: () => { speedEl.textContent = Math.round(obj.v); }
+        overwrite: true,
+        onUpdate: () => { 
+          speedEl.textContent = Math.round(this._speedData.v); 
+        }
       });
     }
 
-
     const rpmFill = document.querySelector('.ld-rpm-fill');
-    if (rpmFill) rpmFill.style.width = `${pct * 100}%`;
-
+    if (rpmFill) {
+      gsap.to(rpmFill, { width: `${pct * 100}%`, duration: 0.4, ease: 'power2.out' });
+    }
 
     const vbar = document.querySelector('.ld-vbar-fill');
-    if (vbar) vbar.style.height = `${pct * 100}%`;
-
+    if (vbar) {
+      gsap.to(vbar, { height: `${pct * 100}%`, duration: 0.4, ease: 'power2.out' });
+    }
 
     this._scrambleField('lt-asset', label.toUpperCase(), 0);
-
 
     const sys = document.getElementById('lt-sys');
     if (sys) sys.textContent = pct < 1 ? 'LOADING ASSETS' : 'COMPILING';
@@ -408,7 +493,6 @@ class Showroom {
       c.visible = (i === 0);
     });
 
-    this.populateIntroStats();
     this.populateUI();
     this.startRender();
 
@@ -505,14 +589,15 @@ class Showroom {
     const car = CARS[index];
     const [cx, cy, cz] = car.framing.camera;
     const [tx, ty, tz] = car.framing.target;
+    const mz = this._isMobile ? 2.0 : 0;
 
     if (isFirst) {
-
+      const targetFov = this._isMobile ? 52 : 38;
       const path = [
         { x: 14, y: 6, z: 18 },
         { x: 9,  y: 4, z: 12 },
-        { x: cx + 1.2, y: cy + 0.6, z: cz + 0.8 },
-        { x: cx, y: cy, z: cz }
+        { x: cx + 1.2, y: cy + 0.6, z: cz + 0.8 + mz },
+        { x: cx, y: cy, z: cz + mz }
       ];
       gsap.to(this.camera.position, {
         duration: 3.2, ease: 'power3.inOut',
@@ -521,12 +606,12 @@ class Showroom {
       });
 
       gsap.fromTo(this.camera, { fov: 22 }, {
-        fov: 38, duration: 3.2, ease: 'power3.inOut',
+        fov: targetFov, duration: 3.2, ease: 'power3.inOut',
         onUpdate: () => this.camera.updateProjectionMatrix()
       });
     } else {
       gsap.to(this.camera.position, {
-        x: cx, y: cy, z: cz, duration: 1.4, ease: 'power3.inOut',
+        x: cx, y: cy, z: cz + mz, duration: 1.4, ease: 'power3.inOut',
         onUpdate: () => this.camera.lookAt(tx, ty, tz)
       });
     }
@@ -538,9 +623,21 @@ class Showroom {
   switchTo(index, dir = 1) {
     if (this.transitioning) return;
 
+    // Trigger developer section if going beyond last car
+    if (dir === 1 && index >= CARS.length) {
+      this.triggerDeveloperSection();
+      return;
+    }
+
     index = ((index % CARS.length) + CARS.length) % CARS.length;
-    if (index === this.currentIndex) return;
+    if (index === this.currentIndex && !this.inDevSection) return;
+    
+    if (this.inDevSection) {
+      this.hideDeveloperSection();
+    }
+
     this.transitioning = true;
+    this.inDevSection = false;
 
     const fromCar = this.cars[this.currentIndex];
     const toCar = this.cars[index];
@@ -548,14 +645,20 @@ class Showroom {
     const toBase = toCar.userData.baseScale || 1;
     const [cx, cy, cz] = car.framing.camera;
     const [tx, ty, tz] = car.framing.target;
+    const mz = this._isMobile ? 2.0 : 0;
 
     const tl = gsap.timeline({
       onComplete: () => {
         this.currentIndex = index;
         this.transitioning = false;
         this.updateActiveDots();
+        this.playAudioFor(index);
       }
     });
+
+    // Reset visibility if coming back from dev
+    gsap.to('.hud', { autoAlpha: 1, duration: 0.5 });
+    gsap.to('#stage', { opacity: 1, duration: 0.8 });
 
 
     tl.to(this.rim.color, {
@@ -571,7 +674,7 @@ class Showroom {
 
 
     tl.add(() => {
-      fromCar.visible = false;
+      this.cars.forEach(c => c.visible = false);
       toCar.visible = true;
       toCar.scale.setScalar(toBase);
       this.applyPaint(index, this.currentPaint, true);
@@ -579,7 +682,7 @@ class Showroom {
 
 
     tl.to(this.camera.position, {
-      x: cx, y: cy, z: cz, duration: 1.0, ease: 'power3.inOut',
+      x: cx, y: cy, z: cz + mz, duration: 1.0, ease: 'power3.inOut',
       onUpdate: () => {
         this.camera.lookAt(tx, ty, tz);
         this.controls.target.set(tx, ty, tz);
@@ -592,6 +695,152 @@ class Showroom {
 
 
     tl.add(() => this.animateSpecNumbers(car), 0.5);
+  }
+
+  triggerDeveloperSection() {
+    if (this.transitioning || this.inDevSection) return;
+    this.transitioning = true;
+    this.inDevSection = true;
+    this.playAudioFor(this.currentIndex);
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        this.transitioning = false;
+      }
+    });
+
+    tl.to('.hud', { autoAlpha: 0, y: 20, duration: 0.6, ease: 'power3.in' });
+    tl.to(this.camera.position, {
+      z: 20, y: 5, x: 10, duration: 1.5, ease: 'power3.inOut'
+    }, 0);
+    tl.to('#stage', { opacity: 0, duration: 1 }, 0.5);
+    
+    tl.add(() => {
+      document.getElementById('developer').style.display = 'flex';
+      this.runDeveloperAnimation();
+    }, 0.8);
+  }
+
+  hideDeveloperSection() {
+    this.inDevSection = false;
+    gsap.to('#developer', { autoAlpha: 0, duration: 0.5, onComplete: () => {
+      document.getElementById('developer').style.display = 'none';
+      gsap.set('#developer', { autoAlpha: 1 });
+    }});
+  }
+
+  runDeveloperAnimation() {
+    const tl = gsap.timeline();
+    
+    gsap.set('.dev-eyebrow, .dev-name-big, .dev-philosophy, .dev-links-wrap, .dev-cta', { opacity: 0, y: 30 });
+    gsap.set('.dev-icon-link', { opacity: 0, scale: 0.8 });
+    gsap.set('.github-path', { strokeDashoffset: 400 });
+    
+    tl.to('.dev-eyebrow', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
+    
+    tl.to('.dev-name-big', { 
+      opacity: 1, 
+      scale: 1,
+      y: 0,
+      duration: 2,
+      ease: 'expo.out',
+      onUpdate: function() {
+        const progress = this.progress();
+        if (progress > 0.1 && progress < 0.6) {
+          const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@·';
+          const nameEl = document.getElementById('dev-name-big');
+          const finalText = 'VINICIUS·MICARELLI';
+          const revealCount = Math.floor((progress - 0.1) / 0.5 * finalText.length);
+          nameEl.innerHTML = finalText.slice(0, revealCount) + 
+            Array.from({ length: finalText.length - revealCount }, () => CHARS[Math.floor(Math.random() * CARS.length)]).join('');
+        } else if (progress >= 0.6) {
+          const el = document.getElementById('dev-name-big');
+          if (el) el.innerHTML = 'VINICIUS<span>·</span>MICARELLI';
+        }
+      }
+    }, '-=0.4');
+
+    tl.to('.dev-philosophy', { 
+      opacity: 1, 
+      y: 0, 
+      duration: 2.5, 
+      ease: 'expo.out',
+      onUpdate: function() {
+        const progress = this.progress();
+        if (progress > 0.1 && progress < 0.6) {
+          const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@·';
+          const philEl = document.querySelector('.dev-philosophy p');
+          const finalText = 'Designing immersive digital experiences with precision and creativity.';
+          const revealCount = Math.floor((progress - 0.1) / 0.5 * finalText.length);
+          philEl.textContent = finalText.slice(0, revealCount) + 
+            Array.from({ length: finalText.length - revealCount }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('');
+        } else if (progress >= 0.6) {
+          const el = document.querySelector('.dev-philosophy p');
+          if (el) el.textContent = 'Designing immersive digital experiences with precision and creativity.';
+        }
+      }
+    }, '-=0.6');
+    tl.to('.dev-links-wrap', { opacity: 1, y: 0, duration: 0.8 }, '-=0.4');
+    tl.to('.dev-icon-link', { opacity: 1, scale: 1, duration: 0.6, stagger: 0.2, ease: 'back.out(1.7)' }, '-=0.6');
+    tl.to('.github-path', { strokeDashoffset: 0, duration: 1.5, ease: 'power2.inOut' }, '<');
+    
+    tl.to('.dev-cta', { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }, '-=0.5');
+    
+    tl.add(() => {
+      this.createParticles();
+      gsap.to('#dev-particles', { opacity: 1, duration: 2 });
+    });
+  }
+
+  createParticles() {
+    const container = document.getElementById('dev-particles');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    for (let i = 0; i < 50; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random() * 3 + 1;
+      gsap.set(p, {
+        width: size,
+        height: size,
+        left: Math.random() * 100 + '%',
+        top: Math.random() * 100 + '%',
+        opacity: Math.random() * 0.5 + 0.2
+      });
+      container.appendChild(p);
+      this.animateParticle(p);
+    }
+  }
+
+  animateParticle(p) {
+    gsap.to(p, {
+      x: `+=${(Math.random() - 0.5) * 200}`,
+      y: `+=${(Math.random() - 0.5) * 200}`,
+      opacity: Math.random() * 0.5 + 0.2,
+      duration: Math.random() * 3 + 2,
+      ease: 'none',
+      onComplete: () => this.animateParticle(p)
+    });
+  }
+
+  restartShowroom() {
+    if (this.transitioning) return;
+    this.transitioning = true;
+    
+    const tl = gsap.timeline({
+      onComplete: () => {
+        this.inDevSection = false;
+        this.transitioning = false;
+        document.getElementById('developer').style.display = 'none';
+        gsap.set('#developer', { autoAlpha: 1 });
+        this.switchTo(0, -1);
+      }
+    });
+
+    // Glitch before leaving
+    tl.to('.glitch-flash', { opacity: 0.5, duration: 0.05, repeat: 6, yoyo: true });
+    tl.to('#developer', { autoAlpha: 0, scale: 0.9, filter: 'blur(20px)', duration: 0.8, ease: 'power3.in' }, 0.1);
   }
 
 
@@ -784,12 +1033,10 @@ class Showroom {
 
 
     document.querySelector('.nav-prev').addEventListener('click', () => {
-      const next = (this.currentIndex - 1 + CARS.length) % CARS.length;
-      this.switchTo(next, -1);
+      this.switchTo(this.currentIndex - 1, -1);
     });
     document.querySelector('.nav-next').addEventListener('click', () => {
-      const next = (this.currentIndex + 1) % CARS.length;
-      this.switchTo(next, 1);
+      this.switchTo(this.currentIndex + 1, 1);
     });
 
 
@@ -818,14 +1065,25 @@ class Showroom {
         this.resetCameraToFraming();
       }
     });
+
+    const muteBtn = document.getElementById('btn-mute');
+    if (muteBtn) {
+      muteBtn.addEventListener('click', () => this.toggleMute());
+    }
+
+    const restartBtn = document.getElementById('btn-restart');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => this.restartShowroom());
+    }
   }
 
   resetCameraToFraming() {
     const car = CARS[this.currentIndex];
     const [cx, cy, cz] = car.framing.camera;
     const [tx, ty, tz] = car.framing.target;
+    const mz = this._isMobile ? 2.0 : 0;
     gsap.to(this.camera.position, {
-      x: cx, y: cy, z: cz, duration: 1.0, ease: 'power3.inOut',
+      x: cx, y: cy, z: cz + mz, duration: 1.0, ease: 'power3.inOut',
       onUpdate: () => {
         this.camera.lookAt(tx, ty, tz);
         this.controls.target.set(tx, ty, tz);
@@ -893,16 +1151,36 @@ class Showroom {
     Observer.create({
       target: window,
       type: 'wheel,touch',
-      wheelSpeed: -1,
-      tolerance: 80,
+      wheelSpeed: 1, // Reset to 1 for standard logic
+      tolerance: 40,
       preventDefault: false,
-      onUp: () => { if (!this.exploreMode) this.switchTo(this.currentIndex + 1, 1); },
-      onDown: () => { if (!this.exploreMode) this.switchTo(this.currentIndex - 1, -1); },
+      onDown: () => { 
+        if (!this.exploreMode) {
+          this.switchTo(this.currentIndex + 1, 1); 
+        }
+      },
+      onUp: () => { 
+        if (!this.exploreMode) {
+          if (this.inDevSection) {
+            this.switchTo(CARS.length - 1, -1);
+          } else {
+            this.switchTo(this.currentIndex - 1, -1); 
+          }
+        }
+      },
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') this.switchTo(this.currentIndex + 1, 1);
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') this.switchTo(this.currentIndex - 1, -1);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        this.switchTo(this.currentIndex + 1, 1);
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        if (this.inDevSection) {
+          this.switchTo(CARS.length - 1, -1);
+        } else {
+          this.switchTo(this.currentIndex - 1, -1);
+        }
+      }
       if (e.key === ' ') { this.autorotate = !this.autorotate; }
       if (e.key === 'Escape' && this.exploreMode) {
 
@@ -933,8 +1211,10 @@ class Showroom {
       if (this.transitioning || this.exploreMode) return;
       const car = CARS[this.currentIndex];
       const [cx, cy, cz] = car.framing.camera;
+      const mz = this._isMobile ? 2.0 : 0;
       this.camera.position.x += (cx + targetTilt.x - this.camera.position.x) * 0.04;
       this.camera.position.y += (cy + targetTilt.y - this.camera.position.y) * 0.04;
+      this.camera.position.z += (cz + mz - this.camera.position.z) * 0.04;
       this.camera.lookAt(...car.framing.target);
     });
 
@@ -960,8 +1240,8 @@ class Showroom {
   }
 
   onResize() {
-    const isMobile = window.innerWidth <= 768;
-    this.camera.fov = isMobile ? 52 : 38;
+    this._isMobile = window.innerWidth <= 768;
+    this.camera.fov = this._isMobile ? 52 : 38;
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);

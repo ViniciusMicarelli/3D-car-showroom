@@ -99,11 +99,12 @@ canvas#stage {
   font-family: var(--display);
   font-weight: 400;
   line-height: 0.92;
-  font-size: clamp(56px, 11vw, 180px);
+  font-size: clamp(26px, 4.5vw, 62px);
   text-transform: uppercase;
   letter-spacing: -0.01em;
   text-align: center;
-  max-width: 14ch;
+  width: 100%;
+  max-width: 100%;
 }
 
 .intro-line {
@@ -159,7 +160,15 @@ canvas#stage {
   opacity: 0;
 }
 
-.hud>* {
+.hud > * {
+  pointer-events: auto;
+}
+
+.hud-corner {
+  pointer-events: none;
+}
+
+.hud-corner > * {
   pointer-events: auto;
 }
 
@@ -402,11 +411,22 @@ canvas#stage {
   color: #fff;
 }
 
-.btn .dotr {
+.btn .dot-doors {
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.25s;
+}
+
+.btn-doors.active {
   background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-doors.active .dot-doors {
+  background: #fff;
 }
 
 .btn-rotate.off .dotr {
@@ -431,6 +451,236 @@ canvas#stage {
   background: #fff;
 }
 
+.btn-mute svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.btn-mute .icon-on  { display: block; }
+.btn-mute .icon-off { display: none;  }
+
+.btn-mute.muted .icon-on  { display: none;  }
+.btn-mute.muted .icon-off { display: block; }
+
+.btn-mute.muted {
+  border-color: rgba(245, 241, 235, 0.35);
+  color: var(--muted);
+}
+
+
+#developer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  background: #050507;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 40px 8vw;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dev-container {
+  max-width: 1200px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  margin: auto;
+}
+
+
+.dev-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.dev-name-big {
+  font-family: var(--display);
+  font-size: clamp(48px, 10vw, 140px);
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  margin-bottom: 48px;
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.dev-name-big span {
+  color: var(--accent);
+}
+
+.dev-philosophy {
+  margin: 40px auto;
+  max-width: 600px;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.dev-philosophy p {
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--fg);
+  letter-spacing: 0.02em;
+}
+
+.dev-rule {
+  width: 60px;
+  height: 2px;
+  background: var(--accent);
+  margin: 24px auto;
+}
+
+.dev-links-wrap {
+  display: flex;
+  justify-content: center;
+  gap: 80px;
+  margin: 60px auto 80px;
+  opacity: 0;
+  transform: translateY(20px);
+  width: 100%;
+}
+
+.dev-icon-link {
+  color: var(--fg);
+  text-decoration: none;
+  transition: color 0.3s, transform 0.3s;
+  display: block;
+  position: relative;
+  animation: subtle-pulse 3s infinite ease-in-out;
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.dev-icon-link:hover {
+  color: var(--accent);
+  transform: scale(1.2) !important;
+  animation-play-state: paused;
+}
+
+.github-svg, .linkedin-svg {
+  width: 52px;
+  height: 52px;
+  color: currentColor;
+}
+
+
+.dev-cta {
+  margin-top: 40px;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+
+.dev-cta h3 {
+  font-family: var(--display);
+  font-size: clamp(32px, 5vw, 64px);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.dev-cta p {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 32px;
+  letter-spacing: 0.05em;
+}
+
+.dev-cta-btns {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+}
+
+@media (max-width: 768px) {
+  .dev-links-wrap {
+    gap: 40px;
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+
+.dot-restart {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+  animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 31, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 75, 31, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 31, 0); }
+}
+
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)"/></svg>');
+}
+
+#stage, .hud, #developer {
+  transition: filter 0.1s ease-out;
+}
+
+.particle {
+  position: absolute;
+  background: var(--accent);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+
+@media (max-width: 768px) {
+  .dev-name-big {
+    font-size: 42px;
+  }
+  .github-svg {
+    width: 60px;
+    height: 60px;
+  }
+}
 
 .envs-wrap {
   display: flex;
@@ -662,7 +912,6 @@ canvas#stage {
   text-transform: uppercase;
 }
 
-
 .nav-arrows {
   position: absolute;
   left: 50%;
@@ -676,6 +925,7 @@ canvas#stage {
   letter-spacing: 0.25em;
   color: var(--muted);
   text-transform: uppercase;
+  z-index: 20;
 }
 
 .nav-prev,
@@ -924,6 +1174,31 @@ canvas#stage {
   border-width: 0 1px 1px 0;
 }
 
+.ld-headphone-hint {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  color: var(--muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ld-headphone-hint svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--accent);
+  flex-shrink: 0;
+}
+
 
 
 @media (max-width: 768px) {
@@ -933,6 +1208,10 @@ canvas#stage {
   }
 
   .brand-sub {
+    display: none;
+  }
+
+  .dev-info {
     display: none;
   }
 
